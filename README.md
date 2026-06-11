@@ -6,6 +6,21 @@ Esse guia é uma tentativa de levar esse princípio a sério. As fontes são cin
 
 ---
 
+## Contexto e Objetivos
+
+**Assunto escolhido:** Funcionamento interno dos Modelos de Linguagem de Grande Escala (LLMs) — da matemática das redes neurais até o pipeline completo que transforma um modelo bruto em um assistente de IA.
+
+A motivação foi direta: ferramentas como ChatGPT e Claude fazem parte do dia a dia, mas a maioria das explicações disponíveis trata o funcionamento interno como caixa preta. Esse caderno temático é uma tentativa de abrir essa caixa usando as fontes mais didáticas disponíveis publicamente — todas do Andrej Karpathy, ex-diretor de IA da Tesla e pesquisador da OpenAI.
+
+**Objetivos de estudo:**
+
+- Entender o pipeline completo de treinamento de um LLM: Pre-training, Supervised Fine-Tuning (SFT) e RLHF
+- Compreender a arquitetura Transformer e o mecanismo de Self-Attention partindo da implementação, não da teoria
+- Entender por que a tokenização (BPE) causa falhas específicas e previsíveis nos modelos
+- Explorar o conceito de "LLM OS" e o que muda na engenharia de software quando IAs viram colaboradores ativos
+
+---
+
 ## O pipeline de treinamento, sem o hype
 
 A maioria das explicações sobre como o ChatGPT funciona pula direto para o resultado e ignora as três fases que produzem esse resultado.
@@ -40,13 +55,58 @@ Isso não é ficção científica — é o que acontece quando você usa o Claud
 
 ---
 
-## O que aprendi tentando usar IA para estudar IA
+## Engenharia de Prompts e Cicatrizes
 
-A primeira vez que pedi ao modelo uma explicação de como o ChatGPT funciona, recebi um parágrafo sobre "processamento de linguagem natural" que poderia ter sido escrito em 2018. Genérico, sem pipeline, sem distinção entre base model e assistant.
+Documentação dos testes de prompt realizados no NotebookLM — o que funcionou, o que falhou e por quê.
 
-O que mudou quando adicionei contexto explícito ao prompt — "separe as etapas de pre-training, SFT e RLHF" — foi imediato. A resposta virou um mapa utilizável. O modelo não ficou mais inteligente; eu fiquei mais específico.
+---
 
-A outra coisa que aprendi: pedir ao modelo para estruturar uma trilha de aprendizado baseada nas fontes do Karpathy gerou exatamente a sequência que faz sentido — micrograd primeiro (para entender backpropagation), depois makemore (modelagem de linguagem), depois a implementação do Transformer. A ordem importa porque cada etapa usa o que você construiu antes.
+### Tentativa 1 — O prompt ingênuo
+
+**Prompt:**
+```
+O que é o ChatGPT?
+```
+
+**Resultado:** O modelo retornou uma explicação genérica sobre "processamento de linguagem natural" e "modelos de linguagem treinados em grandes volumes de texto". Poderia ter sido escrita em 2018. Sem pipeline técnico, sem distinção entre base model e assistant, sem nenhuma referência às fontes carregadas.
+
+**Problema identificado:** O prompt não deu contexto suficiente para o modelo saber o nível de profundidade esperado, nem sinalizou que havia fontes técnicas disponíveis para consulta. A pergunta aberta demais gerou uma resposta Wikipedia.
+
+---
+
+### Tentativa 2 — Adicionando estrutura técnica
+
+**Prompt:**
+```
+Explique o pipeline de treinamento de um LLM como o ChatGPT,
+separando as etapas de Pre-training, SFT e RLHF.
+```
+
+**Resultado:** Resposta útil. O modelo explicou como o pre-training cria um "simulador de documentos da internet" e como o Fine-Tuning e o RLHF transformam esse simulador em um assistente com formato e comportamento específicos. As fontes do Karpathy foram acionadas corretamente.
+
+**O que mudou:** A estrutura explícita no prompt ("separando as etapas") forçou o modelo a organizar a resposta em torno de um framework técnico em vez de uma explicação livre. O modelo não ficou mais inteligente — o prompt ficou mais específico.
+
+---
+
+### Tentativa 3 — Pedindo trilha de aprendizado
+
+**Prompt:**
+```
+Qual é a trilha de aprendizado ideal para entender profundamente
+o funcionamento de LLMs, de acordo com as fontes?
+```
+
+**Resultado:** O modelo estruturou a sequência correta: micrograd (para entender backpropagation na prática), makemore (modelagem de linguagem bigrama), implementação do Transformer do zero, e finalmente o tokenizer. A ordem faz sentido porque cada repositório pressupõe o que foi construído antes.
+
+**Lição:** Ancorar o prompt em "de acordo com as fontes" muda o comportamento do modelo — em vez de gerar uma resposta genérica de internet, ele passa a trabalhar com o material específico carregado no NotebookLM.
+
+---
+
+### Dificuldades encontradas
+
+- **Respostas sem referência às fontes:** Nas primeiras tentativas, o modelo respondia a partir do conhecimento geral, ignorando as transcrições do Karpathy. Solução: adicionar "com base nas fontes carregadas" ou citar o nome do autor diretamente no prompt.
+- **Nível de abstração errado:** Prompts curtos geravam respostas introdutórias demais; prompts muito técnicos geravam respostas que assumiam conhecimento prévio que eu ainda não tinha. Calibrar o nível exigiu duas ou três iterações por tema.
+- **Resumos genéricos demais:** Pedir "resuma a fonte X" gerava parágrafos sem hierarquia de importância. Melhor padrão encontrado: pedir explicitamente "quais são os três conceitos que o Karpathy considera mais mal compreendidos nessa fonte?".
 
 ---
 
@@ -75,6 +135,45 @@ Todos os materiais são públicos e gratuitos:
 **Transformer** — a arquitetura que usa self-attention para decidir quais partes de uma sequência são relevantes para cada posição. Descrita no paper "Attention is All You Need" (2017) e ainda é a base de praticamente todos os LLMs relevantes.
 
 **Agentic Engineering** — coordenar modelos com acesso a ferramentas do mundo real (código, busca, APIs) para que tomem decisões em sequência antes de devolver controle ao humano.
+
+---
+
+## Prompts Reutilizáveis para Revisão
+
+Prompts testados e calibrados para usar no NotebookLM com as mesmas fontes em sessões futuras de revisão:
+
+**Para revisitar a tokenização:**
+```
+Aja como Andrej Karpathy. Explique em termos simples por que a tokenização BPE
+faz com que um modelo falhe ao tentar contar as letras 'r' na palavra 'strawberry'.
+```
+
+**Para comparar etapas do pipeline:**
+```
+Compare o papel do Pre-training e do RLHF no treinamento de um LLM.
+Qual analogia do mundo real melhor representa cada etapa e por quê elas
+não podem ser invertidas de ordem?
+```
+
+**Para explorar o LLM OS:**
+```
+Explique o conceito de 'LLM OS' descrito pelo Karpathy. Como o Context Window
+se compara à RAM de um sistema operacional convencional? Quais são os limites
+dessa analogia?
+```
+
+**Para construir a trilha prática:**
+```
+Quais são os repositórios do Karpathy que devo estudar na ordem correta para
+entender Deep Learning de verdade? Explique o que cada um ensina e por que
+a sequência importa.
+```
+
+**Para explorar o Software 3.0:**
+```
+O que Karpathy quer dizer com 'Software 3.0'? Como a engenharia agêntica
+muda o trabalho de quem desenvolve software hoje?
+```
 
 ---
 
